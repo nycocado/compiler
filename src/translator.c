@@ -1,9 +1,24 @@
+// ============================================================================
+// TRANSLATOR - Traduz AST para Português
+// ============================================================================
+// Converte a árvore de sintaxe abstrata em descrições em português natural.
+// Exemplo: x + 5 → "a soma de x e 5"
+
 #include "translator.h"
 #include <stdio.h>
 #include <string.h>
 
+// Declaração antecipada (usada recursivamente)
 void translate_expression(ASTNode* node, FILE* out);
 
+// ============================================================================
+// get_type_pt - Traduz tipo para português (artigo/descrição)
+// ============================================================================
+// Converte nomes técnicos em descrições em português.
+// Exemplos:
+//   "int" → "inteira"
+//   "float" → "real"
+//   "void" → "vazio"
 const char* get_type_pt(char* type)
 {
     if (strcmp(type, "int") == 0)
@@ -19,6 +34,14 @@ const char* get_type_pt(char* type)
     return type;
 }
 
+// ============================================================================
+// get_type_noun_pt - Retorna nome do tipo em português (singular/plural)
+// ============================================================================
+// Adapta gênero e número.
+// Exemplos:
+//   ("int", 0) → "inteiro"
+//   ("int", 1) → "inteiros"
+//   ("float", 0) → "real"
 const char *get_type_noun_pt(char *type, int plural)
 {
     if (strcmp(type, "int") == 0)
@@ -32,12 +55,21 @@ const char *get_type_noun_pt(char *type, int plural)
     return plural ? "valores do tipo" : "um valor do tipo";
 }
 
+// ============================================================================
+// translate_call - Traduz chamada de função
+// ============================================================================
+// Exemplo:
+//   print(5) → "o resultado da chamada à função print, que recebe o valor 5"
+//   add(a, b) → "o resultado da chamada à função add, que recebe os valores a e b"
 void translate_call(ASTNode *node, FILE *out)
 {
     fprintf(out, "o resultado da chamada à função %s", node->value);
-    if (node->left)
+
+    if (node->left)  // Se há argumentos
     {
         fprintf(out, ", que recebe ");
+
+        // Conta quantos argumentos há
         ASTNode *arg = node->left;
         int count = 0;
         ASTNode *tmp = arg;
@@ -46,11 +78,14 @@ void translate_call(ASTNode *node, FILE *out)
             count++;
             tmp = tmp->next;
         }
+
+        // Escolhe "valor" ou "valores"
         if (count == 1)
             fprintf(out, "o valor ");
         else
             fprintf(out, "os valores ");
 
+        // Traduz cada argumento, separando com vírgula ou "e"
         while (arg)
         {
             translate_expression(arg, out);
@@ -58,31 +93,48 @@ void translate_call(ASTNode *node, FILE *out)
             if (arg)
             {
                 if (arg->next)
-                    fprintf(out, ", ");
+                    fprintf(out, ", ");      // Vírgula se há mais argumentos
                 else
-                    fprintf(out, " e ");
+                    fprintf(out, " e ");     // "e" para o último
             }
         }
     }
 }
 
 
+// ============================================================================
+// translate_expression - Traduz expressões para português
+// ============================================================================
+// Processa nós de expressão e escreve a tradução em português.
+// Exemplos:
+//   x + 5 → "a soma de x e 5"
+//   x > 10 → "x é maior que 10"
+//   !x → "a negação lógica de x"
 void translate_expression(ASTNode* node, FILE* out)
 {
     if (!node)
         return;
+
+    // Processa cada tipo de nó de expressão
     switch (node->type)
     {
         case NODE_IDENTIFIER:
+            // Variável ou nome de função: apenas escreve o nome
             fprintf(out, "%s", node->value);
             break;
+
         case NODE_CONSTANT:
+            // Valor literal: apenas escreve o valor
             fprintf(out, "%s", node->value);
             break;
+
         case NODE_CALL:
+            // Chamada de função: delega para translate_call
             translate_call(node, out);
             break;
+
         case NODE_UNOP:
+            // Operador unário (com um operando)
             if (strcmp(node->op, "!") == 0)
             {
                 fprintf(out, "a negação lógica de ");
@@ -94,7 +146,10 @@ void translate_expression(ASTNode* node, FILE* out)
                 translate_expression(node->left, out);
             }
             break;
+
         case NODE_BINOP:
+            // Operador binário (com dois operandos)
+            // ============ OPERAÇÕES ARITMÉTICAS ============
             if (strcmp(node->op, "+") == 0)
             {
                 fprintf(out, "a soma de ");
@@ -130,44 +185,53 @@ void translate_expression(ASTNode* node, FILE* out)
                 fprintf(out, " por ");
                 translate_expression(node->right, out);
             }
+            // ============ OPERAÇÕES DE COMPARAÇÃO ============
             else if (strcmp(node->op, "==") == 0)
             {
+                // Igualdade
                 translate_expression(node->left, out);
                 fprintf(out, " é igual a ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, "!=") == 0)
             {
+                // Desigualdade
                 translate_expression(node->left, out);
                 fprintf(out, " é diferente de ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, ">") == 0)
             {
+                // Maior que
                 translate_expression(node->left, out);
                 fprintf(out, " é maior que ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, "<") == 0)
             {
+                // Menor que
                 translate_expression(node->left, out);
                 fprintf(out, " é menor que ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, ">=") == 0)
             {
+                // Maior ou igual
                 translate_expression(node->left, out);
                 fprintf(out, " é maior ou igual a ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, "<=") == 0)
             {
+                // Menor ou igual
                 translate_expression(node->left, out);
                 fprintf(out, " é menor ou igual a ");
                 translate_expression(node->right, out);
             }
+            // ============ OPERAÇÕES BITWISE E DE DESLOCAMENTO ============
             else if (strcmp(node->op, "<<") == 0)
             {
+                // Deslocamento à esquerda
                 fprintf(out, "o deslocamento de ");
                 translate_expression(node->left, out);
                 fprintf(out, " à esquerda por ");
@@ -176,6 +240,7 @@ void translate_expression(ASTNode* node, FILE* out)
             }
             else if (strcmp(node->op, ">>") == 0)
             {
+                // Deslocamento à direita
                 fprintf(out, "o deslocamento de ");
                 translate_expression(node->left, out);
                 fprintf(out, " à direita por ");
@@ -184,6 +249,7 @@ void translate_expression(ASTNode* node, FILE* out)
             }
             else if (strcmp(node->op, "&") == 0)
             {
+                // AND bit a bit
                 fprintf(out, "o AND bit a bit entre ");
                 translate_expression(node->left, out);
                 fprintf(out, " e ");
@@ -191,6 +257,7 @@ void translate_expression(ASTNode* node, FILE* out)
             }
             else if (strcmp(node->op, "|") == 0)
             {
+                // OR bit a bit
                 fprintf(out, "o OR bit a bit entre ");
                 translate_expression(node->left, out);
                 fprintf(out, " e ");
@@ -198,19 +265,23 @@ void translate_expression(ASTNode* node, FILE* out)
             }
             else if (strcmp(node->op, "^") == 0)
             {
+                // XOR bit a bit
                 fprintf(out, "o XOR bit a bit entre ");
                 translate_expression(node->left, out);
                 fprintf(out, " e ");
                 translate_expression(node->right, out);
             }
+            // ============ OPERADORES LÓGICOS ============
             else if (strcmp(node->op, "&&") == 0)
             {
+                // AND lógico
                 translate_expression(node->left, out);
                 fprintf(out, " e ");
                 translate_expression(node->right, out);
             }
             else if (strcmp(node->op, "||") == 0)
             {
+                // OR lógico
                 translate_expression(node->left, out);
                 fprintf(out, " ou ");
                 translate_expression(node->right, out);
@@ -237,12 +308,18 @@ void translate_expression(ASTNode* node, FILE* out)
     }
 }
 
+// ============================================================================
+// translate_statement - Traduz statements (instruções)
+// ============================================================================
+// Processa statements como declarações, atribuições, controles de fluxo.
 void translate_statement(ASTNode* node, FILE* out)
 {
     if (!node)
         return;
+
     switch (node->type)
     {
+        // ============ DECLARAÇÃO ============
         case NODE_DECLARATION:
             if (node->right)
             {
@@ -264,6 +341,8 @@ void translate_statement(ASTNode* node, FILE* out)
                 );
             }
             break;
+
+        // ============ ATRIBUIÇÃO ============
         case NODE_ASSIGNMENT:
             fprintf(out, "atribui à variável %s ", node->left->value);
             if (strcmp(node->op, "=") == 0)
@@ -318,10 +397,14 @@ void translate_statement(ASTNode* node, FILE* out)
             }
             translate_expression(node->right, out);
             break;
+
+        // ============ RETURN (DEVOLVE) ============
         case NODE_RETURN:
             fprintf(out, "devolve ");
             translate_expression(node->left, out);
             break;
+
+        // ============ CONTROLE CONDICIONAL (IF/ELSE) ============
         case NODE_IF:
             fprintf(out, "se ");
             translate_expression(node->left, out);
@@ -335,6 +418,8 @@ void translate_statement(ASTNode* node, FILE* out)
                 fprintf(out, " }");
             }
             break;
+
+        // ============ LOOP WHILE ============
         case NODE_WHILE:
             fprintf(out, "enquanto ");
             translate_expression(node->left, out);
@@ -342,6 +427,8 @@ void translate_statement(ASTNode* node, FILE* out)
             translate_ast(node->right, out);
             fprintf(out, " }");
             break;
+
+        // ============ LOOP DO-WHILE ============
         case NODE_DO_WHILE:
             fprintf(out, "executa { ");
             translate_ast(node->left, out);
@@ -349,9 +436,13 @@ void translate_statement(ASTNode* node, FILE* out)
             translate_expression(node->right, out);
             fprintf(out, " for verdade");
             break;
+
+        // ============ BREAK ============
         case NODE_BREAK:
             fprintf(out, "interrompe o ciclo");
             break;
+
+        // ============ LOOP FOR ============
         case NODE_FOR:
             if (node->left)
             {
@@ -369,12 +460,16 @@ void translate_statement(ASTNode* node, FILE* out)
             translate_ast(node->right, out);
             fprintf(out, " }");
             break;
+
+        // ============ SWITCH ============
         case NODE_SWITCH:
             fprintf(out, "analisa o valor de ");
             translate_expression(node->left, out);
             fprintf(out, " e executa: ");
             translate_ast(node->right, out);
             break;
+
+        // ============ CASE (dentro de SWITCH) ============
         case NODE_CASE:
             if (node->left)
             {
@@ -389,30 +484,48 @@ void translate_statement(ASTNode* node, FILE* out)
             translate_ast(node->right, out);
             fprintf(out, " )");
             break;
+
+        // ============ BLOCO ============
         case NODE_BLOCK:
+            // Traduz os statements dentro do bloco
             translate_ast(node->left, out);
             break;
+
+        // ============ CHAMADA DE FUNÇÃO (como statement) ============
         case NODE_CALL:
             fprintf(out, "chama a função %s", node->value);
             break;
+
         default:
             break;
     }
 }
 
+// ============================================================================
+// translate_ast - Traduz toda a árvore de sintaxe abstrata
+// ============================================================================
+// Ponto de entrada: processa cada nó da AST da raiz até as folhas.
+// Atravessa a lista ligada de nós (next) até o final.
 void translate_ast(ASTNode* node, FILE* out)
 {
     ASTNode* current = node;
+
+    // Processa cada nó na lista ligada
     while (current)
     {
         switch (current->type)
         {
+            // ============ FUNÇÃO ============
             case NODE_FUNCTION:
                 fprintf(out, "A função %s ", current->value);
+
+                // Traduz parâmetros (se houver)
                 if (current->left)
                 {
                     fprintf(out, "recebe ");
                     ASTNode* param = current->left;
+
+                    // Conta número de parâmetros
                     int count = 0;
                     ASTNode* tmp = param;
                     while (tmp)
@@ -421,6 +534,7 @@ void translate_ast(ASTNode* node, FILE* out)
                         tmp = tmp->next;
                     }
 
+                    // Adapta singular/plural
                     if (count == 1)
                         fprintf(out, "um valor ");
                     else if (count == 2)
@@ -428,9 +542,10 @@ void translate_ast(ASTNode* node, FILE* out)
                     else
                         fprintf(out, "%d valores ", count);
 
+                    // Tipo dos parâmetros
                     fprintf(out, "%s, ", get_type_noun_pt(param->middle->value, count > 1));
 
-
+                    // Lista nomes dos parâmetros
                     tmp = param;
                     while (tmp)
                     {
@@ -447,8 +562,7 @@ void translate_ast(ASTNode* node, FILE* out)
                     fprintf(out, ", e ");
                 }
 
-                // If the first statement is a return, we can integrate the
-                // "devolve [tipo]" better
+                // Verifica se o corpo é apenas um return (para otimizar tradução)
                 int has_return = 0;
                 if (current->right && current->right->left)
                 {
@@ -459,12 +573,13 @@ void translate_ast(ASTNode* node, FILE* out)
                     }
                 }
 
+                // Traduz tipo de retorno (se não há apenas return)
                 if (!has_return)
                 {
                     fprintf(out, "devolve %s, ", current->middle->value);
                 }
 
-                // Process body
+                // Traduz corpo da função (statements)
                 if (current->right && current->right->left)
                 {
                     ASTNode* stmt = current->right->left;
@@ -473,9 +588,9 @@ void translate_ast(ASTNode* node, FILE* out)
                         translate_statement(stmt, out);
                         stmt = stmt->next;
                         if (stmt)
-                            fprintf(out, ", ");
+                            fprintf(out, ", ");  // Vírgula entre statements
                         else
-                            fprintf(out, ".");
+                            fprintf(out, ".");   // Ponto final
                     }
                 }
                 else
@@ -486,9 +601,10 @@ void translate_ast(ASTNode* node, FILE* out)
                         current->middle->value
                     );
                 }
-                fprintf(out, "\n");
+                fprintf(out, "\n");  // Nova linha após cada função
                 break;
 
+            // ============ OUTROS STATEMENTS EM NÍVEL TOP-LEVEL ============
             case NODE_DECLARATION:
             case NODE_ASSIGNMENT:
             case NODE_RETURN:
@@ -506,6 +622,8 @@ void translate_ast(ASTNode* node, FILE* out)
             default:
                 break;
         }
+
+        // Avança para o próximo nó na lista ligada
         current = current->next;
     }
 }
