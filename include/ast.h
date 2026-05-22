@@ -97,3 +97,11 @@ ASTNode* append_node(ASTNode* list, ASTNode* node);
  * @param node Raiz da árvore
  */
 void free_ast(ASTNode* node);
+
+/**
+ * @brief Define o tipo numa lista de declaradores
+ * @param list Lista de NODE_DECLARATION
+ * @param type Tipo a atribuir
+ * @return Início da lista
+ */
+ASTNode* set_decl_type(ASTNode* list, char* type);

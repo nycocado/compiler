@@ -134,8 +134,16 @@ void translate_expression(ASTNode* node, FILE* out)
             break;
 
         case NODE_UNOP:
-            // Operador unário (com um operando)
-            if (strcmp(node->op, "!") == 0)
+            if (strcmp(node->op, "-") == 0)
+            {
+                fprintf(out, "o negativo de ");
+                translate_expression(node->left, out);
+            }
+            else if (strcmp(node->op, "+") == 0)
+            {
+                translate_expression(node->left, out);
+            }
+            else if (strcmp(node->op, "!") == 0)
             {
                 fprintf(out, "a negação lógica de ");
                 translate_expression(node->left, out);

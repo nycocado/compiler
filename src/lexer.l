@@ -12,7 +12,7 @@ void yyerror(const char *s);
 DIGIT       [0-9]
 LETTER      [a-zA-Z_]
 ID          {LETTER}({LETTER}|{DIGIT})*
-NUMBER      {DIGIT}+(\.{DIGIT}+)?
+NUMBER      {DIGIT}+(\.{DIGIT}+)?([eE][+-]?{DIGIT}+)?
 
 %%
 

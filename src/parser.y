@@ -41,7 +41,7 @@ ASTNode* root;  // Raiz da árvore de sintaxe abstrata
 // NÃO-TERMINAIS - Regras gramaticais (retornam nós AST)
 // ============================================================================
 %type <nval> program external_declaration function_definition parameter_list parameter
-%type <nval> block statement_list statement declaration assignment selection_statement iteration_statement jump_statement
+%type <nval> block statement_list statement declaration declarator_list declarator assignment selection_statement iteration_statement jump_statement
 %type <nval> expression assignment_expression conditional_expression logical_or_expression logical_and_expression
 %type <nval> inclusive_or_expression exclusive_or_expression and_expression equality_expression relational_expression
 %type <nval> shift_expression additive_expression multiplicative_expression cast_expression unary_expression postfix_expression primary_expression
@@ -145,23 +145,27 @@ statement
     ;
 
 // ============================================================================
-// DECLARAÇÃO - Define uma variável
+// DECLARAÇÃO - Define uma ou mais variáveis do mesmo tipo
 // ============================================================================
+// Exemplos: int x;   float a, b, c;   int x=0, y=1;
 declaration
-    : TYPE IDENTIFIER ';' {
-        // Exemplo: int x;
+    : TYPE declarator_list ';' { $$ = set_decl_type($2, $1); }
+    ;
+
+declarator_list
+    : declarator { $$ = $1; }
+    | declarator_list ',' declarator { $$ = append_node($1, $3); }
+    ;
+
+declarator
+    : IDENTIFIER {
         $$ = create_node(NODE_DECLARATION);
-        $$->value = $2;                    // Nome da variável
-        $$->middle = create_node(NODE_IDENTIFIER);
-        $$->middle->value = $1;            // Tipo da variável
+        $$->value = $1;
     }
-    | TYPE IDENTIFIER '=' assignment_expression ';' {
-        // Exemplo: int x = 5;
+    | IDENTIFIER '=' assignment_expression {
         $$ = create_node(NODE_DECLARATION);
-        $$->value = $2;                    // Nome da variável
-        $$->middle = create_node(NODE_IDENTIFIER);
-        $$->middle->value = $1;            // Tipo da variável
-        $$->right = $4;                    // Valor inicial
+        $$->value = $1;
+        $$->right = $3;
     }
     ;
 
@@ -429,14 +433,22 @@ cast_expression
 // ============================================================================
 unary_expression
     : postfix_expression { $$ = $1; }
+    | '-' unary_expression {
+        $$ = create_node(NODE_UNOP);
+        $$->op = strdup("-");
+        $$->left = $2;
+    }
+    | '+' unary_expression {
+        $$ = create_node(NODE_UNOP);
+        $$->op = strdup("+");
+        $$->left = $2;
+    }
     | '!' unary_expression {
-        // Negação lógica (NOT)
         $$ = create_node(NODE_UNOP);
         $$->op = strdup("!");
         $$->left = $2;
     }
     | '~' unary_expression {
-        // Complemento bit a bit (NOT bitwise)
         $$ = create_node(NODE_UNOP);
         $$->op = strdup("~");
         $$->left = $2;

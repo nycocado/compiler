@@ -78,6 +78,21 @@ ASTNode* append_node(ASTNode* list, ASTNode* node)
 }
 
 // ============================================================================
+// set_decl_type - Atribui tipo a todos os nós de uma lista de declaradores
+// ============================================================================
+ASTNode* set_decl_type(ASTNode* list, char* type)
+{
+    ASTNode* cur = list;
+    while (cur)
+    {
+        cur->middle = create_node(NODE_IDENTIFIER);
+        cur->middle->value = strdup(type);
+        cur = cur->next;
+    }
+    return list;
+}
+
+// ============================================================================
 // free_ast - Libera toda a memória alocada pela AST
 // ============================================================================
 // Percorre a árvore recursivamente e libera todos os nós.
