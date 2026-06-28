@@ -1,84 +1,84 @@
 // ============================================================================
-// AST (Árvore de Sintaxe Abstrata) - Funções auxiliares
+// AST (Abstract Syntax Tree) - Helper functions
 // ============================================================================
-// Implementação das funções para criar e gerenciar nós da árvore.
+// Implements functions for creating and managing AST nodes.
 
 #include "ast.h"
 
 // ============================================================================
-// create_node - Aloca e inicializa um novo nó
+// create_node - Allocate and initialise a new node
 // ============================================================================
-// Aloca memória para um novo nó da AST e define seu tipo.
-// Todos os campos são inicializados com 0/NULL (por causa do calloc).
+// Allocates memory for a new AST node and sets its type.
+// All fields are zero-initialised by calloc.
 ASTNode* create_node(NodeType type)
 {
-    // calloc aloca memória e inicializa com 0 (equivalente a malloc + memset)
+    // calloc zeroes memory (equivalent to malloc + memset)
     ASTNode* node = (ASTNode*)calloc(1, sizeof(ASTNode));
-    node->type = type;  // Define o tipo do nó
+    node->type = type; // set node type
     return node;
 }
 
 // ============================================================================
-// create_id - Cria um nó identificador
+// create_id - Create an identifier node
 // ============================================================================
-// Cria um nó NODE_IDENTIFIER com o nome da variável/função.
+// Creates a NODE_IDENTIFIER node with the variable/function name.
 ASTNode* create_id(char* name)
 {
     ASTNode* node = create_node(NODE_IDENTIFIER);
-    node->value = strdup(name);  // Duplica a string para evitar problemas de memória
+    node->value = strdup(name); // duplicate string to avoid ownership issues
     return node;
 }
 
 // ============================================================================
-// create_const - Cria um nó constante
+// create_const - Create a constant node
 // ============================================================================
-// Cria um nó NODE_CONSTANT com o valor numérico.
+// Creates a NODE_CONSTANT node with the numeric value.
 ASTNode* create_const(char* val)
 {
     ASTNode* node = create_node(NODE_CONSTANT);
-    node->value = strdup(val);  // Duplica o valor (ex: "42", "3.14")
+    node->value = strdup(val); // duplicate value string (e.g. "42", "3.14")
     return node;
 }
 
 // ============================================================================
-// create_binop - Cria um nó de operação binária
+// create_binop - Create a binary operation node
 // ============================================================================
-// Cria um nó NODE_BINOP que representa uma operação com dois operandos.
-// Exemplo: a + b, x < 10, p && q
+// Creates a NODE_BINOP representing an operation with two operands.
+// Examples: a + b, x < 10, p && q
 ASTNode* create_binop(char* op, ASTNode* left, ASTNode* right)
 {
     ASTNode* node = create_node(NODE_BINOP);
-    node->op = strdup(op);     // Operador ("+", "-", "&&", etc)
-    node->left = left;          // Operando esquerdo
-    node->right = right;        // Operando direito
+    node->op = strdup(op); // operator ("+", "-", "&&", etc.)
+    node->left = left;     // left operand
+    node->right = right;   // right operand
     return node;
 }
 
 // ============================================================================
-// append_node - Adiciona um nó ao final de uma lista ligada
+// append_node - Append a node to the end of a linked list
 // ============================================================================
-// Conecta dois nós usando o ponteiro 'next'.
-// Usado para conectar múltiplos statements, parâmetros, etc.
+// Links two nodes via the 'next' pointer.
+// Used to chain multiple statements, parameters, etc.
 ASTNode* append_node(ASTNode* list, ASTNode* node)
 {
-    // Se a lista está vazia, o novo nó é o primeiro
+    // if list is empty, the new node becomes the head
     if (!list)
         return node;
 
-    // Navega até o final da lista
+    // walk to the end of the list
     ASTNode* current = list;
     while (current->next)
     {
         current = current->next;
     }
 
-    // Conecta o novo nó ao final
+    // append new node at the end
     current->next = node;
-    return list;  // Retorna o início da lista (inalterado)
+    return list; // return unchanged list head
 }
 
 // ============================================================================
-// set_decl_type - Atribui tipo a todos os nós de uma lista de declaradores
+// set_decl_type - Assign a type to every node in a declarator list
 // ============================================================================
 ASTNode* set_decl_type(ASTNode* list, char* type)
 {
@@ -93,28 +93,28 @@ ASTNode* set_decl_type(ASTNode* list, char* type)
 }
 
 // ============================================================================
-// free_ast - Libera toda a memória alocada pela AST
+// free_ast - Free all memory allocated by the AST
 // ============================================================================
-// Percorre a árvore recursivamente e libera todos os nós.
-// Libera: left, middle, right (recursivamente) e next (lista ligada).
+// Recursively traverses the tree and frees every node.
+// Frees: left, middle, right (recursively) and next (linked list).
 void free_ast(ASTNode* node)
 {
-    // Caso base: se node é NULL, não faz nada
+    // base case: nothing to do
     if (!node)
         return;
 
-    // Libera recursivamente filhos
-    free_ast(node->left);       // Filho esquerdo
-    free_ast(node->middle);     // Filho do meio
-    free_ast(node->right);      // Filho direito
-    free_ast(node->next);       // Próximo nó da lista
+    // recursively free children
+    free_ast(node->left);   // left child
+    free_ast(node->middle); // middle child
+    free_ast(node->right);  // right child
+    free_ast(node->next);   // next node in list
 
-    // Libera strings alocadas
+    // free allocated strings
     if (node->value)
         free(node->value);
     if (node->op)
         free(node->op);
 
-    // Libera o nó em si
+    // free the node itself
     free(node);
 }

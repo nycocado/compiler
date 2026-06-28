@@ -1,44 +1,44 @@
 %{
 // ============================================================================
-// PARSER - Analisador Sintático (Bison)
+// PARSER - Syntactic Analyser (Bison)
 // ============================================================================
-// O parser recebe tokens do lexer e verifica se seguem as regras gramaticais.
-// Constrói uma Árvore de Sintaxe Abstrata (AST) que representa a estrutura do programa.
+// Receives tokens from the lexer and verifies they follow the grammar rules.
+// Builds an Abstract Syntax Tree (AST) representing the program's structure.
 
 #include "ast.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-extern int yylex();           // Função do lexer
-extern int yylineno;          // Número da linha atual
-void yyerror(const char *s);  // Função de erro
+extern int yylex();           // lexer function
+extern int yylineno;          // current line number
+void yyerror(const char *s);  // error function
 
-ASTNode* root;  // Raiz da árvore de sintaxe abstrata
+ASTNode* root;  // AST root
 %}
 
 // ============================================================================
-// DECLARAÇÃO DE TIPOS DE VALORES
+// VALUE TYPE DECLARATIONS
 // ============================================================================
 %union {
-    char* sval;              // Valores string (identificadores, tipos)
-    struct ASTNode* nval;    // Nós da árvore (expressões, statements)
+    char* sval;              // string values (identifiers, types)
+    struct ASTNode* nval;    // AST nodes (expressions, statements)
 }
 
 // ============================================================================
-// TOKENS - Símbolos terminais (vêm do lexer)
+// TOKENS - Terminal symbols (from the lexer)
 // ============================================================================
-// Tokens que carregam valores (strings)
+// Tokens that carry values (strings)
 %token <sval> TYPE IDENTIFIER CONSTANT
 
-// Tokens de palavras-chave de controle
+// Control keyword tokens
 %token IF ELSE SWITCH CASE DEFAULT FOR WHILE DO RETURN BREAK
 
-// Tokens de operadores compostos
+// Compound operator tokens
 %token EQ NE LE GE AND OR SHL SHR
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN AND_ASSIGN OR_ASSIGN XOR_ASSIGN SHL_ASSIGN SHR_ASSIGN
 
 // ============================================================================
-// NÃO-TERMINAIS - Regras gramaticais (retornam nós AST)
+// NON-TERMINALS - Grammar rules (return AST nodes)
 // ============================================================================
 %type <nval> program external_declaration function_definition parameter_list parameter
 %type <nval> block statement_list statement declaration declarator_list declarator assignment selection_statement iteration_statement jump_statement
@@ -49,45 +49,45 @@ ASTNode* root;  // Raiz da árvore de sintaxe abstrata
 %type <nval> labeled_statements labeled_statement constant_expression expression_opt
 
 // ============================================================================
-// RESOLUÇÃO DE PRECEDÊNCIA
+// PRECEDENCE RESOLUTION
 // ============================================================================
-// Resolve ambiguidade do if-else: if (x) if (y) z; else w;
-// O else associa com o segundo if (devido à regra %nonassoc ELSE)
+// Resolves the dangling-else ambiguity: if (x) if (y) z; else w;
+// The else binds to the innermost if (%nonassoc ELSE)
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
 
 %%
 
 // ============================================================================
-// REGRA INICIAL - PROGRAMA
+// START RULE - PROGRAM
 // ============================================================================
 program
-    : external_declaration { root = $1; }  // Primeira declaração é a raiz
-    | program external_declaration { $$ = append_node($1, $2); root = $$; }  // Conecta múltiplas declarações
+    : external_declaration { root = $1; }  // first declaration is the root
+    | program external_declaration { $$ = append_node($1, $2); root = $$; }  // connect multiple declarations
     ;
 
 // ============================================================================
-// DECLARAÇÕES EXTERNAS (Top-level)
+// EXTERNAL DECLARATIONS (top-level)
 // ============================================================================
 external_declaration
-    : function_definition { $$ = $1; }  // Função
-    | declaration { $$ = $1; }           // Variável global
+    : function_definition { $$ = $1; }  // function
+    | declaration { $$ = $1; }           // global variable
     ;
 
 // ============================================================================
-// DEFINIÇÃO DE FUNÇÃO
+// FUNCTION DEFINITION
 // ============================================================================
-// Exemplo: int add(int a, int b) { ... }
+// Example: int add(int a, int b) { ... }
 function_definition
     : TYPE IDENTIFIER '(' parameter_list ')' block {
         $$ = create_node(NODE_FUNCTION);
-        $$->value = $2;                    // Nome da função
+        $$->value = $2;                    // function name
         $$->middle = create_node(NODE_IDENTIFIER);
-        $$->middle->value = $1;            // Tipo de retorno
-        $$->left = $4;                     // Parâmetros
-        $$->right = $6;                    // Corpo (bloco de statements)
+        $$->middle->value = $1;            // return type
+        $$->left = $4;                     // parameters
+        $$->right = $6;                    // body (statement block)
     }
-    | TYPE IDENTIFIER '(' ')' block {     // Função sem parâmetros
+    | TYPE IDENTIFIER '(' ')' block {     // function with no parameters
         $$ = create_node(NODE_FUNCTION);
         $$->value = $2;
         $$->middle = create_node(NODE_IDENTIFIER);
@@ -97,42 +97,42 @@ function_definition
     ;
 
 // ============================================================================
-// LISTA DE PARÂMETROS E PARÂMETROS
+// PARAMETER LIST AND PARAMETERS
 // ============================================================================
-// Exemplo: (int a, float b, char c)
+// Example: (int a, float b, char c)
 parameter_list
     : parameter { $$ = $1; }
-    | parameter_list ',' parameter { $$ = append_node($1, $3); }  // Conecta múltiplos parâmetros
+    | parameter_list ',' parameter { $$ = append_node($1, $3); }  // connect multiple parameters
     ;
 
-// Um parâmetro: tipo + nome
+// a single parameter: type + name
 parameter
     : TYPE IDENTIFIER {
         $$ = create_node(NODE_PARAM);
-        $$->value = $2;                // Nome do parâmetro
+        $$->value = $2;                // parameter name
         $$->middle = create_node(NODE_IDENTIFIER);
-        $$->middle->value = $1;        // Tipo do parâmetro
+        $$->middle->value = $1;        // parameter type
     }
     ;
 
 // ============================================================================
-// BLOCO - Agrupa múltiplos statements entre { }
+// BLOCK - Groups multiple statements between { }
 // ============================================================================
 block
-    : '{' '}' { $$ = create_node(NODE_BLOCK); }  // Bloco vazio
-    | '{' statement_list '}' { $$ = create_node(NODE_BLOCK); $$->left = $2; }  // Bloco com statements
+    : '{' '}' { $$ = create_node(NODE_BLOCK); }  // empty block
+    | '{' statement_list '}' { $$ = create_node(NODE_BLOCK); $$->left = $2; }  // block with statements
     ;
 
 // ============================================================================
-// LISTA DE STATEMENTS - Múltiplos statements conectados
+// STATEMENT LIST - Multiple connected statements
 // ============================================================================
 statement_list
     : statement { $$ = $1; }
-    | statement_list statement { $$ = append_node($1, $2); }  // Conecta statements
+    | statement_list statement { $$ = append_node($1, $2); }  // connect statements
     ;
 
 // ============================================================================
-// STATEMENT - Uma instrução ou comando
+// STATEMENT - A single instruction or command
 // ============================================================================
 statement
     : declaration { $$ = $1; }           // int x;
@@ -145,9 +145,9 @@ statement
     ;
 
 // ============================================================================
-// DECLARAÇÃO - Define uma ou mais variáveis do mesmo tipo
+// DECLARATION - Defines one or more variables of the same type
 // ============================================================================
-// Exemplos: int x;   float a, b, c;   int x=0, y=1;
+// Examples: int x;   float a, b, c;   int x=0, y=1;
 declaration
     : TYPE declarator_list ';' { $$ = set_decl_type($2, $1); }
     ;
@@ -170,9 +170,9 @@ declarator
     ;
 
 // ============================================================================
-// ATRIBUIÇÃO - Atribui valor a uma variável
+// ASSIGNMENT - Assigns a value to a variable
 // ============================================================================
-// Exemplos: x = 5, x += 3, x -= 2, etc.
+// Examples: x = 5, x += 3, x -= 2, etc.
 assignment
     : primary_expression '=' assignment_expression { $$ = create_node(NODE_ASSIGNMENT); $$->left = $1; $$->right = $3; $$->op = strdup("="); }
     | primary_expression ADD_ASSIGN assignment_expression { $$ = create_node(NODE_ASSIGNMENT); $$->left = $1; $$->right = $3; $$->op = strdup("+="); }
@@ -188,32 +188,32 @@ assignment
     ;
 
 // ============================================================================
-// STATEMENT DE SELEÇÃO (if/switch) - Controla fluxo baseado em condição
+// SELECTION STATEMENT (if/switch) - Controls flow based on a condition
 // ============================================================================
 selection_statement
     : IF '(' expression ')' statement %prec LOWER_THAN_ELSE {
-        // Exemplo: if (x > 5) { ... }
+        // Example: if (x > 5) { ... }
         $$ = create_node(NODE_IF);
-        $$->left = $3;       // Condição (expressão)
-        $$->middle = $5;     // Corpo do if
+        $$->left = $3;       // condition (expression)
+        $$->middle = $5;     // if body
     }
     | IF '(' expression ')' statement ELSE statement {
-        // Exemplo: if (x > 5) { ... } else { ... }
+        // Example: if (x > 5) { ... } else { ... }
         $$ = create_node(NODE_IF);
-        $$->left = $3;       // Condição
-        $$->middle = $5;     // Corpo do if
-        $$->right = $7;      // Corpo do else
+        $$->left = $3;       // condition
+        $$->middle = $5;     // if body
+        $$->right = $7;      // else body
     }
     | SWITCH '(' expression ')' '{' labeled_statements '}' {
-        // Exemplo: switch (x) { case 1: ... }
+        // Example: switch (x) { case 1: ... }
         $$ = create_node(NODE_SWITCH);
-        $$->left = $3;       // Expressão a testar
-        $$->right = $6;      // Lista de cases
+        $$->left = $3;       // expression to test
+        $$->right = $6;      // case list
     }
     ;
 
 // ============================================================================
-// LISTA DE CASES - Múltiplos cases dentro de switch
+// CASE LIST - Multiple cases inside a switch
 // ============================================================================
 labeled_statements
     : labeled_statement { $$ = $1; }
@@ -221,19 +221,19 @@ labeled_statements
     ;
 
 // ============================================================================
-// CASE - Uma opção dentro de switch
+// CASE - A single option inside a switch
 // ============================================================================
 labeled_statement
     : CASE constant_expression ':' statement_list {
-        // Exemplo: case 5: x = 10; y = 20;
+        // Example: case 5: x = 10; y = 20;
         $$ = create_node(NODE_CASE);
-        $$->left = $2;       // Valor do case
-        $$->right = $4;      // Statements do case
+        $$->left = $2;       // case value
+        $$->right = $4;      // case statements
     }
     | DEFAULT ':' statement_list {
-        // Exemplo: default: x = 0;
+        // Example: default: x = 0;
         $$ = create_node(NODE_CASE);
-        $$->right = $3;      // Statements do default
+        $$->right = $3;      // default statements
     }
     ;
 
@@ -242,64 +242,64 @@ constant_expression
     ;
 
 // ============================================================================
-// ITERATION STATEMENT (loops) - Repetição de código
+// ITERATION STATEMENT (loops) - Code repetition
 // ============================================================================
 iteration_statement
     : WHILE '(' expression ')' statement {
-        // Exemplo: while (x < 10) { x++; }
+        // Example: while (x < 10) { x++; }
         $$ = create_node(NODE_WHILE);
-        $$->left = $3;       // Condição (testada antes de executar)
-        $$->right = $5;      // Corpo do loop
+        $$->left = $3;       // condition (tested before executing)
+        $$->right = $5;      // loop body
     }
     | DO statement WHILE '(' expression ')' ';' {
-        // Exemplo: do { x++; } while (x < 10);
+        // Example: do { x++; } while (x < 10);
         $$ = create_node(NODE_DO_WHILE);
-        $$->left = $2;       // Corpo do loop
-        $$->right = $5;      // Condição (testada após executar)
+        $$->left = $2;       // loop body
+        $$->right = $5;      // condition (tested after executing)
     }
     | FOR '(' expression_opt ';' expression_opt ';' expression_opt ')' statement {
-        // Exemplo: for (i=0; i<10; i++) { ... }
+        // Example: for (i=0; i<10; i++) { ... }
         $$ = create_node(NODE_FOR);
-        $$->left = $3;       // Inicialização (ex: i=0)
-        $$->middle = $5;     // Condição (ex: i<10)
-        $$->right = $9;      // Corpo do loop
-        // Nota: incremento ($7) ignorado nesta versão simplificada
+        $$->left = $3;       // initializer (e.g. i=0)
+        $$->middle = $5;     // condition (e.g. i<10)
+        $$->right = $9;      // loop body
+        // Note: increment ($7) ignored in this simplified version
     }
     ;
 
 // ============================================================================
-// EXPRESSÃO OPCIONAL - Pode estar vazia
+// OPTIONAL EXPRESSION - May be empty
 // ============================================================================
-// Usada em for: for (;;) { } - todas as partes opcionais
+// Used in for: for (;;) { } - all parts optional
 expression_opt
-    : /* empty */ { $$ = NULL; }      // Nada
-    | expression { $$ = $1; }         // Expressão
+    : /* empty */ { $$ = NULL; }      // nothing
+    | expression { $$ = $1; }         // expression
     ;
 
 // ============================================================================
-// JUMP STATEMENT - Salta para outro ponto do código
+// JUMP STATEMENT - Jumps to another point in the code
 // ============================================================================
 jump_statement
     : RETURN expression ';' {
-        // Exemplo: return x + 5;
+        // Example: return x + 5;
         $$ = create_node(NODE_RETURN);
-        $$->left = $2;       // Valor retornado
+        $$->left = $2;       // returned value
     }
     | RETURN ';' {
-        // Exemplo: return;
+        // Example: return;
         $$ = create_node(NODE_RETURN);
     }
     | BREAK ';' {
-        // Exemplo: break;
-        $$ = create_node(NODE_BREAK);  // Sai do loop/switch mais próximo
+        // Example: break;
+        $$ = create_node(NODE_BREAK);  // exits the nearest loop/switch
     }
     ;
 
 // ============================================================================
-// EXPRESSÕES - Descrevem valores e computações
+// EXPRESSIONS - Describe values and computations
 // ============================================================================
-// HIERARQUIA DE PRECEDÊNCIA (menor para maior):
-// 1. expression (vírgula)
+// PRECEDENCE HIERARCHY (lowest to highest):
+// 1. expression (comma)
 // 2. assignment_expression (=, +=, -=, etc)
 // 3. conditional_expression (? :)
 // 4. logical_or_expression (||)
@@ -313,81 +313,81 @@ jump_statement
 // 12. additive_expression (+, -)
 // 13. multiplicative_expression (*, /, %)
 // 14. unary_expression (!, ~)
-// 15. postfix_expression (chamada de função)
-// 16. primary_expression (base: identificador, constante, parênteses)
+// 15. postfix_expression (function call)
+// 16. primary_expression (base: identifier, constant, parentheses)
 // ============================================================================
 
 expression
     : assignment_expression { $$ = $1; }
-    | expression ',' assignment_expression { $$ = append_node($1, $3); }  // Múltiplas expressões
+    | expression ',' assignment_expression { $$ = append_node($1, $3); }  // multiple expressions
     ;
 
 assignment_expression
     : conditional_expression { $$ = $1; }
-    | assignment { $$ = $1; }  // Prioridade menor que condicional
+    | assignment { $$ = $1; }  // lower priority than conditional
     ;
 
 // ============================================================================
-// EXPRESSÃO CONDICIONAL (ternária)
+// CONDITIONAL EXPRESSION (ternary)
 // ============================================================================
-// Exemplo: x > 5 ? 10 : 0
+// Example: x > 5 ? 10 : 0
 conditional_expression
     : logical_or_expression { $$ = $1; }
     | logical_or_expression '?' expression ':' conditional_expression {
         $$ = create_node(NODE_CONDITIONAL);
-        $$->left = $1;       // Condição
-        $$->middle = $3;     // Valor se verdadeiro
-        $$->right = $5;      // Valor se falso
+        $$->left = $1;       // condition
+        $$->middle = $3;     // value if true
+        $$->right = $5;      // value if false
     }
     ;
 
 // ============================================================================
-// OPERADORES LÓGICOS
+// LOGICAL OPERATORS
 // ============================================================================
-// Operador OU lógico (||) - menor precedência
+// logical OR (||) - lowest precedence
 logical_or_expression
     : logical_and_expression { $$ = $1; }
     | logical_or_expression OR logical_and_expression { $$ = create_binop("||", $1, $3); }
     ;
 
-// Operador E lógico (&&) - maior precedência que ||
+// logical AND (&&) - higher precedence than ||
 logical_and_expression
     : inclusive_or_expression { $$ = $1; }
     | logical_and_expression AND inclusive_or_expression { $$ = create_binop("&&", $1, $3); }
     ;
 
 // ============================================================================
-// OPERADORES BITWISE
+// BITWISE OPERATORS
 // ============================================================================
-// OU bit a bit (|)
+// bitwise OR (|)
 inclusive_or_expression
     : exclusive_or_expression { $$ = $1; }
     | inclusive_or_expression '|' exclusive_or_expression { $$ = create_binop("|", $1, $3); }
     ;
 
-// XOR bit a bit (^)
+// bitwise XOR (^)
 exclusive_or_expression
     : and_expression { $$ = $1; }
     | exclusive_or_expression '^' and_expression { $$ = create_binop("^", $1, $3); }
     ;
 
-// E bit a bit (&) - maior precedência que | e ^
+// bitwise AND (&) - higher precedence than | and ^
 and_expression
     : equality_expression { $$ = $1; }
     | and_expression '&' equality_expression { $$ = create_binop("&", $1, $3); }
     ;
 
 // ============================================================================
-// OPERADORES DE COMPARAÇÃO
+// COMPARISON OPERATORS
 // ============================================================================
-// Igualdade (==) e desigualdade (!=)
+// equality (==) and inequality (!=)
 equality_expression
     : relational_expression { $$ = $1; }
     | equality_expression EQ relational_expression { $$ = create_binop("==", $1, $3); }
     | equality_expression NE relational_expression { $$ = create_binop("!=", $1, $3); }
     ;
 
-// Relacional (<, >, <=, >=)
+// relational (<, >, <=, >=)
 relational_expression
     : shift_expression { $$ = $1; }
     | relational_expression '<' shift_expression { $$ = create_binop("<", $1, $3); }
@@ -397,9 +397,9 @@ relational_expression
     ;
 
 // ============================================================================
-// DESLOCAMENTO DE BITS
+// BIT SHIFT
 // ============================================================================
-// << (esquerda) e >> (direita)
+// << (left) and >> (right)
 shift_expression
     : additive_expression { $$ = $1; }
     | shift_expression SHL additive_expression { $$ = create_binop("<<", $1, $3); }
@@ -407,16 +407,16 @@ shift_expression
     ;
 
 // ============================================================================
-// ARITMÉTICA
+// ARITHMETIC
 // ============================================================================
-// Adição (+) e subtração (-)
+// addition (+) and subtraction (-)
 additive_expression
     : multiplicative_expression { $$ = $1; }
     | additive_expression '+' multiplicative_expression { $$ = create_binop("+", $1, $3); }
     | additive_expression '-' multiplicative_expression { $$ = create_binop("-", $1, $3); }
     ;
 
-// Multiplicação (*), divisão (/) e módulo (%)
+// multiplication (*), division (/) and modulo (%)
 multiplicative_expression
     : cast_expression { $$ = $1; }
     | multiplicative_expression '*' cast_expression { $$ = create_binop("*", $1, $3); }
@@ -429,7 +429,7 @@ cast_expression
     ;
 
 // ============================================================================
-// OPERADORES UNÁRIOS (atuam sobre um único operando)
+// UNARY OPERATORS (act on a single operand)
 // ============================================================================
 unary_expression
     : postfix_expression { $$ = $1; }
@@ -456,34 +456,34 @@ unary_expression
     ;
 
 // ============================================================================
-// EXPRESSÃO PÓS-FIX (funções e bases)
+// POSTFIX EXPRESSION (functions and bases)
 // ============================================================================
 postfix_expression
     : primary_expression { $$ = $1; }
     | IDENTIFIER '(' ')' {
-        // Chamada de função sem argumentos
+        // function call with no arguments
         $$ = create_node(NODE_CALL);
-        $$->value = $1;      // Nome da função
+        $$->value = $1;      // function name
     }
     | IDENTIFIER '(' argument_expression_list ')' {
-        // Chamada de função com argumentos
+        // function call with arguments
         $$ = create_node(NODE_CALL);
-        $$->value = $1;      // Nome da função
-        $$->left = $3;       // Lista de argumentos
+        $$->value = $1;      // function name
+        $$->left = $3;       // argument list
     }
     ;
 
 // ============================================================================
-// EXPRESSÃO PRIMÁRIA (base da hierarquia)
+// PRIMARY EXPRESSION (base of the hierarchy)
 // ============================================================================
 primary_expression
-    : IDENTIFIER { $$ = create_id($1); }         // Nome de variável/função
-    | CONSTANT { $$ = create_const($1); }        // Literal (número)
-    | '(' expression ')' { $$ = $2; }            // Expressão entre parênteses
+    : IDENTIFIER { $$ = create_id($1); }         // variable/function name
+    | CONSTANT { $$ = create_const($1); }        // literal (number)
+    | '(' expression ')' { $$ = $2; }            // expression in parentheses
     ;
 
 // ============================================================================
-// LISTA DE ARGUMENTOS (parâmetros em chamada de função)
+// ARGUMENT LIST (parameters in a function call)
 // ============================================================================
 argument_expression_list
     : assignment_expression { $$ = $1; }
@@ -493,9 +493,9 @@ argument_expression_list
 %%
 
 // ============================================================================
-// TRATAMENTO DE ERROS
+// ERROR HANDLING
 // ============================================================================
-// Função chamada pelo Bison quando encontra um erro sintático
+// Called by Bison when a syntax error is encountered
 void yyerror(const char *s) {
     fprintf(stderr, "Erro sintático na linha %d: %s\n", yylineno, s);
 }

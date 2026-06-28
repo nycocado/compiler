@@ -1,6 +1,6 @@
 /**
  * @file translator.h
- * @brief Tradutor de AST para linguagem natural
+ * @brief AST to natural language translator
  */
 
 #pragma once
@@ -8,8 +8,8 @@
 #include "ast.h"
 
 /**
- * @brief Traduz a AST para português
- * @param node Raiz da árvore
- * @param out Arquivo de saída
+ * @brief Translates the AST to Portuguese natural language.
+ * @param node AST root.
+ * @param out Output file.
  */
 void translate_ast(ASTNode* node, FILE* out);

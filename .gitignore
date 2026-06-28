@@ -1,15 +1,5 @@
-# Build artifacts
-obj/
 bin/
+obj/
 src/lex.yy.c
 src/parser.tab.c
 src/parser.tab.h
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Temp files
-*.o
-*.swp
-*~

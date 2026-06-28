@@ -1,33 +1,33 @@
 // ============================================================================
-// MAIN - Ponto de entrada do compilador
+// MAIN - Compiler entry point
 // ============================================================================
-// Fluxo:
-// 1. Abre arquivo de entrada
-// 2. Chama o parser (que usa o lexer internamente)
-// 3. Se bem-sucedido, traduz a AST para português
-// 4. Escreve resultado em arquivo ou stdout
+// Flow:
+// 1. Open input file
+// 2. Run the parser (which calls the lexer internally)
+// 3. On success, translate the AST to natural language
+// 4. Write the result to a file or stdout
 
 #include "ast.h"
 #include "translator.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-// Declarações externas (definidas pelo Flex e Bison)
-extern FILE* yyin;       // Arquivo de entrada para o lexer
-extern int yyparse();    // Função principal do parser
-extern ASTNode* root;    // Raiz da AST (definida pelo parser)
+// External declarations (defined by Flex and Bison)
+extern FILE* yyin;    // input file for the lexer
+extern int yyparse(); // main parser function
+extern ASTNode* root; // AST root (set by the parser)
 
 // ============================================================================
-// int main - Função principal
+// int main - Main function
 // ============================================================================
-// argc: número de argumentos de linha de comando
-// argv: array de strings com os argumentos
-//   argv[0]: nome do programa
-//   argv[1]: arquivo de entrada (obrigatório)
-//   argv[2]: arquivo de saída (opcional, padrão: stdout)
+// argc: command-line argument count
+// argv: argument array
+//   argv[0]: program name
+//   argv[1]: input file (required)
+//   argv[2]: output file (optional, defaults to stdout)
 int main(int argc, char** argv)
 {
-    // Verifica argumentos: precisa de pelo menos arquivo de entrada
+    // check arguments: at least an input file is required
     if (argc < 2)
     {
         fprintf(stderr, "Uso: %s <arquivo_entrada> [arquivo_saida]\n", argv[0]);
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     }
 
     // ========================================================================
-    // ETAPA 1: Abre arquivo de entrada
+    // STEP 1: Open input file
     // ========================================================================
     FILE* in = fopen(argv[1], "r");
     if (!in)
@@ -43,13 +43,13 @@ int main(int argc, char** argv)
         perror("Erro ao abrir arquivo de entrada");
         return 1;
     }
-    yyin = in;  // Define o arquivo de entrada para o lexer
+    yyin = in; // set input file for the lexer
 
     // ========================================================================
-    // ETAPA 2: Parser - Lê e analisa tokens
+    // STEP 2: Parser — read and analyse tokens
     // ========================================================================
-    // yyparse() chama yylex() internamente para obter tokens
-    // Se sucesso: retorna 0, se erro: retorna não-zero
+    // yyparse() calls yylex() internally to obtain tokens
+    // returns 0 on success, non-zero on error
     if (yyparse() != 0)
     {
         fprintf(stderr, "Erro durante o parsing.\n");
@@ -58,9 +58,9 @@ int main(int argc, char** argv)
     }
 
     // ========================================================================
-    // ETAPA 3: Abre arquivo de saída
+    // STEP 3: Open output file
     // ========================================================================
-    FILE* out = stdout;  // Padrão: escreve em stdout
+    FILE* out = stdout; // default: write to stdout
     if (argc >= 3)
     {
         out = fopen(argv[2], "w");
@@ -73,20 +73,20 @@ int main(int argc, char** argv)
     }
 
     // ========================================================================
-    // ETAPA 4: Tradução e Limpeza
+    // STEP 4: Translate and clean up
     // ========================================================================
     if (root)
     {
-        // Traduz a AST (converter para português)
+        // translate the AST to natural language
         translate_ast(root, out);
-        // Libera a memória da AST
+        // free AST memory
         free_ast(root);
     }
 
-    // Fecha arquivos
+    // close files
     fclose(in);
     if (out != stdout)
         fclose(out);
 
-    return 0;  // Sucesso
+    return 0; // success
 }
